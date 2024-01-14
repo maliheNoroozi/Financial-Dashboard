@@ -7,21 +7,48 @@ import { redirect } from 'next/navigation';
 
 const FormSchema = z.object({
   id: z.string(),
-  customerId: z.string(),
-  amount: z.coerce.number(),
-  status: z.enum(['pending', 'paid']),
+  customerId: z.string({
+    required_error: 'Customer is required',
+    invalid_type_error: 'Please select a customer.',
+  }),
+  amount: z.coerce.number().gt(0, {
+    message: 'Please enter an amount greater than $0.',
+  }),
+  status: z.enum(['pending', 'paid'], {
+    invalid_type_error: 'Please select an invoice status.',
+  }),
   date: z.string(),
 });
 
 const CreateInvoiceSchema = FormSchema.omit({ id: true, date: true });
 const EditInvoiceSchema = FormSchema.omit({ id: true, date: true });
 
-export async function createInvoice(formData: FormData) {
-  const { customerId, amount, status } = CreateInvoiceSchema.parse({
+interface FormState {
+  errors: {
+    customerId?: string[];
+    amount?: string[];
+    status?: string[];
+    _form?: string[];
+  };
+}
+
+export async function createInvoice(
+  formState: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const validatonResult = CreateInvoiceSchema.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
     status: formData.get('status'),
   });
+
+  if (!validatonResult.success) {
+    return {
+      errors: validatonResult.error.flatten().fieldErrors,
+    };
+  }
+
+  const { customerId, amount, status } = validatonResult.data;
   const amountInCents = amount * 100;
   const date = new Date().toISOString().split('T')[0];
 
@@ -32,10 +59,16 @@ export async function createInvoice(formData: FormData) {
 `;
   } catch (error: unknown) {
     if (error instanceof Error) {
-      return { message: error.message };
+      return {
+        errors: {
+          _form: [error.message],
+        },
+      };
     } else {
       return {
-        message: 'Database Error: Failed to create Invoice.',
+        errors: {
+          _form: ['Database Error: Failed to create Invoice.'],
+        },
       };
     }
   }
