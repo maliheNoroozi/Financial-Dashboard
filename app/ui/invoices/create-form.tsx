@@ -13,7 +13,8 @@ import { createInvoice } from '@/app/lib/actions';
 import { useFormState } from 'react-dom';
 
 export default function Form({ customers }: { customers: CustomerField[] }) {
-  const [formState, formAction] = useFormState(createInvoice, { errors: {} });
+  const initialFormState = { message: null, errors: {} };
+  const [formState, formAction] = useFormState(createInvoice, initialFormState);
 
   return (
     <form action={formAction} aria-describedby="form-error">
@@ -131,14 +132,12 @@ export default function Form({ customers }: { customers: CustomerField[] }) {
               ))}
           </div>
         </fieldset>
-      </div>
-      <div id="form-error" aria-live="polite" aria-atomic="true">
-        {formState.errors._form &&
-          formState.errors._form.map((error: string) => (
-            <p className="mt-2 text-sm text-red-500" key={error}>
-              {error}
-            </p>
-          ))}
+
+        <div id="form-error" aria-live="polite" aria-atomic="true">
+          {formState.message && (
+            <p className="mt-2 text-sm text-red-500">{formState.message}</p>
+          )}
+        </div>
       </div>
       <div className="mt-6 flex justify-end gap-4">
         <Link

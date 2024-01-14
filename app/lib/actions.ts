@@ -24,12 +24,12 @@ const CreateInvoiceSchema = FormSchema.omit({ id: true, date: true });
 const EditInvoiceSchema = FormSchema.omit({ id: true, date: true });
 
 interface FormState {
-  errors: {
+  errors?: {
     customerId?: string[];
     amount?: string[];
     status?: string[];
-    _form?: string[];
   };
+  message?: string | null;
 }
 
 export async function createInvoice(
@@ -45,6 +45,7 @@ export async function createInvoice(
   if (!validatonResult.success) {
     return {
       errors: validatonResult.error.flatten().fieldErrors,
+      message: 'Database Error: Failed to create the Invoice.',
     };
   }
 
@@ -60,15 +61,11 @@ export async function createInvoice(
   } catch (error: unknown) {
     if (error instanceof Error) {
       return {
-        errors: {
-          _form: [error.message],
-        },
+        message: error.message,
       };
     } else {
       return {
-        errors: {
-          _form: ['Database Error: Failed to create Invoice.'],
-        },
+        message: 'Database Error: Failed to create the Invoice.',
       };
     }
   }
@@ -77,13 +74,25 @@ export async function createInvoice(
   redirect('/dashboard/invoices');
 }
 
-export async function editInvoice(id: string, formData: FormData) {
-  const { customerId, amount, status } = EditInvoiceSchema.parse({
+export async function editInvoice(
+  id: string,
+  formState: FormState,
+  formData: FormData,
+) {
+  const validationResult = EditInvoiceSchema.safeParse({
     customerId: formData.get('customerId'),
     amount: formData.get('amount'),
     status: formData.get('status'),
   });
 
+  if (!validationResult.success) {
+    return {
+      errors: validationResult.error.flatten().fieldErrors,
+      message: 'Database Error: Failed to edit the Invoice.',
+    };
+  }
+
+  const { customerId, amount, status } = validationResult.data;
   const amountInCents = amount * 100;
 
   try {
@@ -94,10 +103,12 @@ export async function editInvoice(id: string, formData: FormData) {
 `;
   } catch (error: unknown) {
     if (error instanceof Error) {
-      return { message: error.message };
+      return {
+        message: error.message,
+      };
     } else {
       return {
-        message: 'Database Error: Failed to update Invoice.',
+        message: 'Database Error: Failed to edit Invoice.',
       };
     }
   }
@@ -117,7 +128,7 @@ export async function deleteInvoice(id: string) {
       return { message: error.message };
     } else {
       return {
-        message: 'Database Error: Failed to delete Invoice.',
+        message: 'Database Error: Failed to delete the Invoice.',
       };
     }
   }
